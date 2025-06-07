@@ -1,4 +1,4 @@
-# inference_engine.py (Corrected with manual scheduler creation)
+# inference_engine.py (Corrected import path)
 import os
 import torch
 import decord
@@ -16,8 +16,9 @@ from draw_pose import get_pose_images
 from utils import concat_images_grid, sample_video, get_sample_indexes, get_new_height_width
 
 # --- START OF FIX ---
-# Import the specific scheduler class required by the pipeline
-from models.scheduler.dpm_solver import CogVideoXDPMScheduler
+# Correct the import path for the scheduler. It is likely in a file
+# directly inside the 'models' directory, not in a 'scheduler' subfolder.
+from models.dpm_solver import CogVideoXDPMScheduler
 # --- END OF FIX ---
 
 
@@ -38,8 +39,7 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     pe_std = np.load(std_path)
     print("✅ Pose data loaded.")
 
-    # --- START OF FIX ---
-    # Manually create the scheduler instance. This bypasses the need for a scheduler_config.json file.
+    # Manually create the scheduler instance.
     print("Creating DPM Scheduler...")
     scheduler = CogVideoXDPMScheduler.from_config({
         "beta_end": 0.02,
@@ -51,14 +51,12 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
         "trained_betas": None
     })
     print("✅ Scheduler created.")
-    # --- END OF FIX ---
 
     print("Initializing MTVCrafter Pipeline...")
     pipe = MTVCrafterPipeline.from_pretrained(
         model_path=pipeline_repo_path,
         torch_dtype=torch.bfloat16,
-        # Pass the manually created scheduler instance directly to the pipeline
-        scheduler=scheduler,
+        scheduler=scheduler, # Pass the manually created scheduler
     ).to(device)
     pipe.vae.enable_tiling()
     pipe.vae.enable_slicing()
@@ -98,7 +96,7 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     input_smpl_joints = norm_poses.unsqueeze(0).to(device)
     with torch.no_grad():
         motion_tokens, _, _ = vqvae(input_smpl_joints, return_vq=True)
-        output_motion, _ = vqvae(input_smpl_joints)
+        output_motion, _ =  vqvae(input_smpl_joints)
     pose_images_after = get_pose_images(output_motion[0].cpu().detach().numpy() * pe_std + pe_mean, offset)
     pose_images_after = [image.resize((new_width, new_height)).crop((x1, y1, x1+dst_width, y1+dst_height)) for image in pose_images_after]
     ref_images = ref_images / 255.0
