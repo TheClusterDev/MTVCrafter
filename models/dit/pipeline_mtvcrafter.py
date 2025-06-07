@@ -336,7 +336,7 @@ class MTVCrafterPipeline(DiffusionPipeline):
         self.normalize = transforms.Normalize([0.5], [0.5])
 
     @classmethod
-    def from_pretrained(
+    def (
         cls,
         model_path,
         transformer_model_path=None,  # This argument is no longer used but kept for compatibility
@@ -346,9 +346,9 @@ class MTVCrafterPipeline(DiffusionPipeline):
     ):  
         # This is the corrected logic for loading the transformer model.
         # It uses the main repository path ('model_path') and specifies the exact subfolder.
-        transformer = Transformer3DModel.from_pretrained(Add commentMore actions
+        transformer = Transformer3DModel.from_pretrained(
             model_path,
-            subfolder="MV-DiT/CogVideoX",
+            subfolder="MV-DiT/CogVideoX",  # <-- The correct use of subfolder
             torch_dtype=torch_dtype,
             **kwargs
         )
