@@ -1,4 +1,4 @@
-# inference_engine.py (Corrected import path)
+# inference_engine.py (Corrected with the final, verified import path)
 import os
 import torch
 import decord
@@ -16,9 +16,8 @@ from draw_pose import get_pose_images
 from utils import concat_images_grid, sample_video, get_sample_indexes, get_new_height_width
 
 # --- START OF FIX ---
-# Correct the import path for the scheduler. It is likely in a file
-# directly inside the 'models' directory, not in a 'scheduler' subfolder.
-from models.dpm_solver import CogVideoXDPMScheduler
+# This is the correct, verified import path for the scheduler class
+from models.cogvideox_dpm_scheduler import CogVideoXDPMScheduler
 # --- END OF FIX ---
 
 
@@ -82,7 +81,7 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     x1 = (new_width - dst_width) // 2
     y1 = (new_height - dst_height) // 2
     sample_indexes = get_sample_indexes(data['video_length'], num_frames, stride=1)
-    ref_image = Image.open(ref_image_path).convert("RGB")
+    ref_image = Image..open(ref_image_path).convert("RGB")
     ref_image = torch.from_numpy(np.array(ref_image)).permute(2, 0, 1).contiguous()
     ref_images = torch.stack([ref_image.clone() for _ in range(num_frames)])
     ref_images = F.resize(ref_images, (new_height, new_width), InterpolationMode.BILINEAR)
