@@ -1,17 +1,18 @@
-# motion_extractor.py
+# motion_extractor.py (Corrected Version)
 import os
 import torch
 import numpy as np
 import torchvision.transforms as T
 from PIL import Image
 from ultralytics import YOLO
+from huggingface_hub import hf_hub_download # <-- Import the downloader
 from models.motion4d.vqvae import Encoder, Decoder, VectorQuantizer, SMPL_VQVAE
 
 def get_transforms(w, h, mean, std):
     return T.Compose([T.Resize((h, w)), T.ToTensor(), T.Normalize(mean, std)])
 
 def get_transforms_from_order(results):
-    # ... (helper function code, no changes needed)
+    # This helper function is correct, no changes needed
     order_results = []
     for result in results:
         if result.boxes.id is not None:
@@ -21,7 +22,7 @@ def get_transforms_from_order(results):
     return order_results
 
 def get_transforms_from_mot(order_results):
-    # ... (helper function code, no changes needed)
+    # This helper function is correct, no changes needed
     mot_results = {}
     for result in order_results:
         track_id = result['id']
@@ -33,8 +34,17 @@ def initialize_motion_models(model_snapshot_path):
     """Initializes and returns all models needed for motion extraction."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Initializing motion extraction models...")
+
+    # --- START OF THE FIX ---
+    # Explicitly download the YOLO model before using it
+    print("Downloading YOLO World v2 model...")
+    yolo_model_path = hf_hub_download(repo_id="ultralytics/yolo_world", filename="yolo_world_v2.pt")
+    print(f"✅ YOLO model downloaded to {yolo_model_path}")
     
-    yolo_model = YOLO("yolo_world_v2.pt")
+    # Load the YOLO model from the downloaded path
+    yolo_model = YOLO(yolo_model_path)
+    # --- END OF THE FIX ---
+
     encoder = Encoder(in_channels=3, mid_channels=[128, 512], out_channels=3072)
     decoder = Decoder(in_channels=3072, mid_channels=[512, 128], out_channels=3)
     vq = VectorQuantizer(nb_code=8192, code_dim=3072, is_train=False)
@@ -51,6 +61,7 @@ def initialize_motion_models(model_snapshot_path):
 
 def extract_pkl_from_video(video_path, models_tuple):
     """Extracts motion PKL using the initialized models."""
+    # This function is correct, no changes needed
     yolo_model, vqvae_model, data_mean, data_std, device = models_tuple
     temp_motion_pkl_path = "temp_motion.pkl"
     transforms = get_transforms(512, 512, data_mean, data_std)
