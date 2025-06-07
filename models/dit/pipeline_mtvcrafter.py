@@ -339,22 +339,29 @@ class MTVCrafterPipeline(DiffusionPipeline):
     def from_pretrained(
         cls,
         model_path,
-        transformer_model_path=None,
+        transformer_model_path=None,  # This argument is no longer used but kept for compatibility
         scheduler_type='ddim',
         torch_dtype=None,
         **kwargs,
     ):  
-        if transformer_model_path is None:
-            transformer_model_path = os.path.join(model_path, 'transformer')
+        # This is the corrected logic for loading the transformer model.
+        # It uses the main repository path ('model_path') and specifies the exact subfolder.
         transformer = Transformer3DModel.from_pretrained(
-            transformer_model_path, torch_dtype=torch_dtype, **kwargs
+            model_path,
+            subfolder="MV-DiT/CogVideoX",
+            torch_dtype=torch_dtype,
+            **kwargs
         )
+        
+        # The rest of the function remains the same
         if scheduler_type == 'ddim':
             scheduler = CogVideoXDDIMScheduler.from_pretrained(model_path, subfolder='scheduler')
         elif scheduler_type == 'dpm':
             scheduler = CogVideoXDPMScheduler.from_pretrained(model_path, subfolder='scheduler')
         else:
             assert False
+        
+        # This part loads the other components like the VAE from the main path
         pipe = super().from_pretrained(
             model_path, transformer=transformer, scheduler=scheduler, torch_dtype=torch_dtype, **kwargs
         )
