@@ -336,7 +336,7 @@ class MTVCrafterPipeline(DiffusionPipeline):
         self.normalize = transforms.Normalize([0.5], [0.5])
 
     @classmethod
-    def (
+    def from_pretrained(
         cls,
         model_path,
         transformer_model_path=None,  # This argument is no longer used but kept for compatibility
