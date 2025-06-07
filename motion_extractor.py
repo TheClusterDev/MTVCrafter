@@ -1,14 +1,12 @@
-# motion_extractor.py
+# motion_extractor.py (Corrected)
 import os
 import sys
 import cv2
 import torch
 import pickle
-import torchvision
 
-# Load the TorchScript model once at the top
-model_path = 'nlf_l_multi_0.3.2.torchscript'
-assert os.path.exists(model_path), f"Model file not found at {model_path}"
+# Tell the script to look one directory UP for the model file
+model_path = '../nlf_l_multi_0.3.2.torchscript' 
 model = torch.jit.load(model_path).cuda().eval()
 
 def extract_pkl_from_video(video_path):
@@ -37,7 +35,6 @@ def extract_pkl_from_video(video_path):
             # Collect pose data
             for key in pose_results.keys():
                 if key in pred:
-                    #pose_results[key].append(pred[key].cpu().numpy())
                     pose_results[key].append(pred[key])
                 else:
                     pose_results[key].append(None)
