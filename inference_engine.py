@@ -1,4 +1,4 @@
-# inference_engine.py (Corrected with correct data file names)
+# inference_engine.py (Corrected with the right repository)
 import os
 import torch
 import decord
@@ -20,27 +20,28 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     to_pil = ToPILImage()
     normalize = transforms.Normalize([0.5], [0.5])
 
-    # Define the correct model paths
-    pretrained_model_path = "THUDM/CogVideoX-5b"
-    transformer_path = "yanboding/MTVCrafter"
+    # --- START OF FIX ---
+    # The entire custom pipeline and all its components (VAE, Transformer, etc.)
+    # are located within the 'yanboding/MTVCrafter' repository.
+    # We must use this as the single source for the pipeline.
+    pipeline_repo_path = "yanboding/MTVCrafter"
+    # --- END OF FIX ---
 
     with open(motion_data_path, 'rb') as f:
         data = pickle.load(f)
 
-    # --- START OF FIX ---
-    # Download the mean and std files using their correct names from the repo root.
+    # Download and load pose normalization data
     print("Downloading pose normalization data...")
-    mean_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="dataset_global_mean.npy")
-    std_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="dataset_global_std.npy")
+    mean_path = hf_hub_download(repo_id=pipeline_repo_path, filename="dataset_global_mean.npy")
+    std_path = hf_hub_download(repo_id=pipeline_repo_path, filename="dataset_global_std.npy")
     pe_mean = np.load(mean_path)
     pe_std = np.load(std_path)
     print("✅ Pose data loaded.")
-    # --- END OF FIX ---
 
     print("Initializing MTVCrafter Pipeline...")
     pipe = MTVCrafterPipeline.from_pretrained(
-        model_path=pretrained_model_path,
-        transformer_model_path=transformer_path,
+        # Use the single correct repository path. The pipeline knows how to find its sub-components.
+        model_path=pipeline_repo_path,
         torch_dtype=torch.bfloat16,
         scheduler_type='dpm',
     ).to(device)
@@ -48,10 +49,10 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     pipe.vae.enable_slicing()
     print("✅ Pipeline initialized.")
 
-    # Load VQVAE model reliably
+    # Load VQVAE model
     print("Loading VQ-VAE model...")
     vqvae_model_path = hf_hub_download(
-        repo_id="yanboding/MTVCrafter",
+        repo_id=pipeline_repo_path,
         filename="4DMoT/mp_rank_00_model_states.pt"
     )
     state_dict = torch.load(vqvae_model_path, map_location="cpu")
@@ -63,6 +64,7 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     vqvae.load_state_dict(state_dict['module'], strict=True)
     print("✅ VQ-VAE model loaded.")
 
+    # (The rest of the script remains the same)
     new_height, new_width = get_new_height_width(data, dst_height, dst_width)
     x1 = (new_width - dst_width) // 2
     y1 = (new_height - dst_height) // 2
