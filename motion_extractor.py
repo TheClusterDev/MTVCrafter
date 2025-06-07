@@ -4,6 +4,7 @@ import sys
 import cv2
 import torch
 import pickle
+import torchvision  # <-- THE FIX: Import torchvision to register its custom operations
 
 # Tell the script to look one directory UP for the model file
 model_path = '../nlf_l_multi_0.3.2.torchscript' 
