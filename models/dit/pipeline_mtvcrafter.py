@@ -346,7 +346,12 @@ class MTVCrafterPipeline(DiffusionPipeline):
     ):  
         # This is the corrected logic for loading the transformer model.
         # It uses the main repository path ('model_path') and specifies the exact subfolder.
-        transformer = Transformer3DModel.from_pretrained(pretrained_model_name_or_path, subfolder=os.path.join("MV-DiT", "CogVideoX"),
+        transformer = Transformer3DModel.from_pretrained(Add commentMore actions
+            model_path,
+            subfolder="MV-DiT/CogVideoX",
+            torch_dtype=torch_dtype,
+            **kwargs
+        )
         
         # The rest of the function remains the same
         if scheduler_type == 'ddim':
