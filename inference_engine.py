@@ -1,4 +1,4 @@
-# inference_engine.py (Corrected to download data files)
+# inference_engine.py (Corrected with correct data file names)
 import os
 import torch
 import decord
@@ -22,16 +22,16 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
 
     # Define the correct model paths
     pretrained_model_path = "THUDM/CogVideoX-5b"
-    transformer_path = "yanboding/MTVCrafter" # The custom transformer is in this repo
+    transformer_path = "yanboding/MTVCrafter"
 
     with open(motion_data_path, 'rb') as f:
         data = pickle.load(f)
 
     # --- START OF FIX ---
-    # Download the mean and std files from the original repo instead of relying on a local folder.
+    # Download the mean and std files using their correct names from the repo root.
     print("Downloading pose normalization data...")
-    mean_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="data/mean.npy")
-    std_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="data/std.npy")
+    mean_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="dataset_global_mean.npy")
+    std_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="dataset_global_std.npy")
     pe_mean = np.load(mean_path)
     pe_std = np.load(std_path)
     print("✅ Pose data loaded.")
