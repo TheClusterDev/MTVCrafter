@@ -1,4 +1,4 @@
-# inference_engine.py (Corrected)
+# inference_engine.py (Corrected to download data files)
 import os
 import torch
 import decord
@@ -20,25 +20,27 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     to_pil = ToPILImage()
     normalize = transforms.Normalize([0.5], [0.5])
 
-    # --- START OF FIX ---
     # Define the correct model paths
-    # The base pipeline is from THUDM
     pretrained_model_path = "THUDM/CogVideoX-5b"
-    # The custom MTVCrafter transformer is in the yanboding repo
-    transformer_path = "yanboding/MTVCrafter"
-    # --- END OF FIX ---
+    transformer_path = "yanboding/MTVCrafter" # The custom transformer is in this repo
 
     with open(motion_data_path, 'rb') as f:
         data = pickle.load(f)
 
-    # Use the parent directory for data files, as CWD is mtvcrafter_repo
-    pe_mean = np.load('../data/mean.npy')
-    pe_std = np.load('../data/std.npy')
+    # --- START OF FIX ---
+    # Download the mean and std files from the original repo instead of relying on a local folder.
+    print("Downloading pose normalization data...")
+    mean_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="data/mean.npy")
+    std_path = hf_hub_download(repo_id="yanboding/MTVCrafter", filename="data/std.npy")
+    pe_mean = np.load(mean_path)
+    pe_std = np.load(std_path)
+    print("✅ Pose data loaded.")
+    # --- END OF FIX ---
 
     print("Initializing MTVCrafter Pipeline...")
     pipe = MTVCrafterPipeline.from_pretrained(
         model_path=pretrained_model_path,
-        transformer_model_path=transformer_path, # Pass the correct repo ID
+        transformer_model_path=transformer_path,
         torch_dtype=torch.bfloat16,
         scheduler_type='dpm',
     ).to(device)
@@ -46,16 +48,13 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     pipe.vae.enable_slicing()
     print("✅ Pipeline initialized.")
 
-    # --- START OF FIX ---
     # Load VQVAE model reliably
     print("Loading VQ-VAE model...")
     vqvae_model_path = hf_hub_download(
         repo_id="yanboding/MTVCrafter",
         filename="4DMoT/mp_rank_00_model_states.pt"
     )
-    # Use the downloaded path to load the state dictionary
     state_dict = torch.load(vqvae_model_path, map_location="cpu")
-    # --- END OF FIX ---
 
     motion_encoder = Encoder(in_channels=3, mid_channels=[128, 512], out_channels=3072, downsample_time=[2, 2], downsample_joint=[1, 1])
     motion_quant = VectorQuantizer(nb_code=8192, code_dim=3072, is_train=False)
@@ -70,14 +69,12 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
 
     sample_indexes = get_sample_indexes(data['video_length'], num_frames, stride=1)
     
-    # Load reference image
     ref_image = Image.open(ref_image_path).convert("RGB")
     ref_image = torch.from_numpy(np.array(ref_image)).permute(2, 0, 1).contiguous()
     ref_images = torch.stack([ref_image.clone() for _ in range(num_frames)])
     ref_images = F.resize(ref_images, (new_height, new_width), InterpolationMode.BILINEAR)
     ref_images = F.crop(ref_images, y1, x1, dst_height, dst_width)
 
-    # Process poses
     smpl_poses = np.array([pose[0][0].cpu().numpy() for pose in data['pose']['joints3d_nonparam']])
     poses = smpl_poses[sample_indexes]
     norm_poses = torch.tensor((poses - pe_mean) / pe_std)
@@ -94,7 +91,6 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
     pose_images_after = get_pose_images(output_motion[0].cpu().detach().numpy() * pe_std + pe_mean, offset)
     pose_images_after = [image.resize((new_width, new_height)).crop((x1, y1, x1+dst_width, y1+dst_height)) for image in pose_images_after]
 
-    # Normalize images
     ref_images = ref_images / 255.0
     ref_images = normalize(ref_images)
 
@@ -106,15 +102,13 @@ def run_inference(device, motion_data_path, ref_image_path='', dst_width=512, ds
         num_inference_steps=num_inference_steps,
         guidance_scale=guidance_scale,
         seed=seed,
-        ref_images=ref_images.to(torch.bfloat16), # Ensure correct dtype
-        motion_embeds=motion_tokens.to(torch.bfloat16), # Ensure correct dtype
+        ref_images=ref_images.to(torch.bfloat16),
+        motion_embeds=motion_tokens.to(torch.bfloat16),
         joint_mean=pe_mean,
         joint_std=pe_std,
     ).frames[0]
     print("✅ Inference complete.")
 
-    # Save result
-    # We don't have the original input video, so we will show the reference image instead
     vis_images = []
     pil_ref_image = to_pil(((ref_images[0] + 1) * 127.5).clamp(0, 255).to(torch.uint8))
     for k in range(len(output_images)):
