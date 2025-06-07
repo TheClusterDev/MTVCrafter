@@ -7,11 +7,11 @@ from PIL import Image
 from ultralytics import YOLO
 from models.motion4d.vqvae import Encoder, Decoder, VectorQuantizer, SMPL_VQVAE
 
-# --- Helper Functions ---
 def get_transforms(w, h, mean, std):
     return T.Compose([T.Resize((h, w)), T.ToTensor(), T.Normalize(mean, std)])
 
 def get_transforms_from_order(results):
+    # ... (helper function code, no changes needed)
     order_results = []
     for result in results:
         if result.boxes.id is not None:
@@ -21,6 +21,7 @@ def get_transforms_from_order(results):
     return order_results
 
 def get_transforms_from_mot(order_results):
+    # ... (helper function code, no changes needed)
     mot_results = {}
     for result in order_results:
         track_id = result['id']
@@ -28,8 +29,8 @@ def get_transforms_from_mot(order_results):
         mot_results[track_id].append(result)
     return list(mot_results.values())
 
-# --- Main Extractor Logic ---
-def initialize_motion_extractor(model_snapshot_path):
+def initialize_motion_models(model_snapshot_path):
+    """Initializes and returns all models needed for motion extraction."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Initializing motion extraction models...")
     
@@ -49,10 +50,10 @@ def initialize_motion_extractor(model_snapshot_path):
     return yolo_model, vqvae_model, data_mean, data_std, device
 
 def extract_pkl_from_video(video_path, models_tuple):
+    """Extracts motion PKL using the initialized models."""
     yolo_model, vqvae_model, data_mean, data_std, device = models_tuple
-    dst_width, dst_height = 512, 512
     temp_motion_pkl_path = "temp_motion.pkl"
-    transforms = get_transforms(dst_width, dst_height, data_mean, data_std)
+    transforms = get_transforms(512, 512, data_mean, data_std)
 
     print("Running YOLO object tracking...")
     yolo_results = yolo_model.track(video_path, conf=0.3, iou=0.5, classes=[0], device=device, save=False, show=False, verbose=False)
@@ -67,8 +68,8 @@ def extract_pkl_from_video(video_path, models_tuple):
         
         with torch.no_grad():
             x_encoded = vqvae_model.encoder(image_tensors)
-            _, commit_loss, motion_vectors = vqvae_model.vq(x_encoded, return_vq=True)
-            motion_data['quant'] = motion_vectors[1].cpu()
+            _, commit_loss, vq_output = vqvae_model.vq(x_encoded, return_vq=True)
+            motion_data['quant'] = vq_output[1].cpu() 
             motion_data['bbox'] = [frame['bbox'] for frame in tracked_person_frames]
 
     torch.save(motion_data, temp_motion_pkl_path)
