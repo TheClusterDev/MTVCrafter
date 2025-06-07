@@ -5,7 +5,9 @@ from models.dit.pipeline_mtvcrafter import MTVCrafterPipeline
 from PIL import Image
 
 def run_inference(model_path, device, pkl_path, ref_image_path, **kwargs):
+    """Runs inference using the downloaded model snapshot path."""
     pipe = MTVCrafterPipeline.from_pretrained(model_path, torch_dtype=torch.float16).to(device)
+    
     ref_image = Image.open(ref_image_path).convert("RGB")
     motion_data = torch.load(pkl_path, map_location=device)
     
